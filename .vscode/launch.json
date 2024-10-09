@@ -1,0 +1,10 @@
+{
+    "configurations": [
+        {
+            "type": "debugpy",
+            "request": "launch",
+            "name": "Launch Backgammon",
+            "program": "${workspaceFolder}/Backgammon.py"
+        }
+    ]
+}

@@ -1,4 +1,4 @@
-import numpy as np # type: ignore
+import numpy as np 
 import random
 
 class Backgammon:
@@ -8,8 +8,8 @@ class Backgammon:
         
     def get_initial_state(self):
         state = np.zeros(self.board_size, dtype=int)
-        state[0] = 1   
-        state[12] = -1
+        state[0] = 2   
+        state[12] = -2
         # initial state (15, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -15, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
         return state
     
@@ -71,7 +71,7 @@ class Backgammon:
         # should try to play the biggest dice first if both moves not possible
         dice_rolls = sorted(dice_rolls, reverse=True)
         
-        first_moves = self.find_single_moves(state, player, dice_rolls[0])  # [[0,2]]
+        first_moves = self.find_single_moves(state, player, dice_rolls[0])  # Find valid moves for the biggest dice
         if not first_moves:
             dice_rolls = sorted(dice_rolls)
             first_moves = self.find_single_moves(state, player, dice_rolls[0])  # if biggest dice not possible, try smallest first
@@ -89,8 +89,6 @@ class Backgammon:
             second_moves = self.find_single_moves(new_state, player, dice_rolls[1])
             if(not second_moves):
                 valid_moves.add((move, (0, 0)))
-            if(not second_moves):
-                return []
             for second_move in second_moves:
                 from_pos2, to_pos2 = second_move  
                 if(from_pos1 == from_pos2 == 0):    # Check if two moves were made from index 0
@@ -135,9 +133,9 @@ while True:
     
     if is_terminal:
         print("Final State:", state)
-        if value == 1:
+        if value == -1:
             print("Player 2 wins!")
-        elif value == -1:
+        elif value == 1:
             print("Player 1 wins!")
         else:
             print("Game ended in a draw!")
