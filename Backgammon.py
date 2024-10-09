@@ -8,8 +8,8 @@ class Backgammon:
         
     def get_initial_state(self):
         state = np.zeros(self.board_size, dtype=int)
-        state[0] = 15   
-        state[12] = -15
+        state[0] = 1   
+        state[12] = -1
         # initial state (15, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -15, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
         return state
     
@@ -18,9 +18,10 @@ class Backgammon:
         return dice_rolls
     
     def change_perspective(self, state, player):
+        shifted_state = np.zeros(self.board_size, dtype=int)
         if player == -1:
             # Shift the state for player 2
-            shifted_state = np.zeros_like(state)
+            shifted_state = state.copy()
             for i in range(self.board_size):
                 shifted_state[i-12] = state[i]
             return shifted_state
@@ -36,6 +37,8 @@ class Backgammon:
     def get_next_state(self, state, action, player): 
         # Unpack the action tuple
         first_move, second_move = action
+        if (player == -1):
+            state = self.change_perspective(state, player)
 
         # First move
         from_pos1, to_pos1 = first_move
@@ -46,8 +49,9 @@ class Backgammon:
         from_pos2, to_pos2 = second_move
         state[from_pos2] -= player  
         if(to_pos2 != 'throw_away'): state[to_pos2] += player  
+        
+        return self.change_perspective(state, player) if player == -1 else state
 
-        return state
     
     def find_single_moves(self, state, player, roll):
         single_moves = []
@@ -62,27 +66,39 @@ class Backgammon:
     
     def get_valid_moves(self, state, player, dice_rolls):
         # Change perspective if player 2
-        new_state = self.change_perspective(state, player)
-        valid_moves = []
+        state = self.change_perspective(state, player)
+        valid_moves = set()
         # should try to play the biggest dice first if both moves not possible
         dice_rolls = sorted(dice_rolls, reverse=True)
         
-        first_moves = self.find_single_moves(new_state, player, dice_rolls[0])
+        first_moves = self.find_single_moves(state, player, dice_rolls[0])  # [[0,2]]
+        if not first_moves:
+            dice_rolls = sorted(dice_rolls)
+            first_moves = self.find_single_moves(state, player, dice_rolls[0])  # if biggest dice not possible, try smallest first
+            if not first_moves:
+                return [((0, 0), (0, 0))]  # No moves possible, return a dummy move
+            
         for move in first_moves:
+            new_state = state.copy()
             from_pos1, to_pos1 = move
             # Create a new state after the first move
             new_state[from_pos1] -= player  
-            new_state[to_pos1] += player  
+            if(to_pos1 != 'throw_away'): new_state[to_pos1] += player  
 
             # Find valid second moves for the new state using the second die roll
             second_moves = self.find_single_moves(new_state, player, dice_rolls[1])
+            if(not second_moves):
+                valid_moves.add((move, (0, 0)))
+            if(not second_moves):
+                return []
             for second_move in second_moves:
                 from_pos2, to_pos2 = second_move  
                 if(from_pos1 == from_pos2 == 0):    # Check if two moves were made from index 0
                     continue
-                valid_moves.append(((from_pos1, to_pos1), (from_pos2, to_pos2)))
+                move_pair = tuple(sorted([(from_pos1, to_pos1), (from_pos2, to_pos2)]))     
+                valid_moves.add(move_pair)
 
-        return valid_moves
+        return list(valid_moves)
 
     def get_value_and_terminated(self, state):
         if not np.any(state > 0):  
@@ -106,10 +122,6 @@ while True:
 
     valid_moves = game.get_valid_moves(state, player, dice_rolls)
     print("Valid Moves:", valid_moves)
-
-    if not valid_moves:
-        print("No valid moves available. Game over!")
-        break
 
     action = int(input(f"Player {player}, select your action (0-{len(valid_moves) - 1}): "))
     
