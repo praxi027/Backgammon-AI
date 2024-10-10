@@ -23,14 +23,14 @@ class Backgammon:
             # Shift the state for player 2
             shifted_state = state.copy()
             for i in range(self.board_size):
-                shifted_state[i-12] = state[i]
+                shifted_state[i-12] = -state[i]
             return shifted_state
         return state  # For player 1, no shift is needed
     
-    def can_throw_away(self, state, player):
+    def can_throw_away(self, state):
         # Check if all pieces are in the final quarter (positions 18 to 23) and not occupied by the opponent
         for pos in range(0, 18):
-            if state[pos] * player > 0:  # If any position is occupied by the opponent or empty
+            if state[pos] > 0:  # If any position is occupied by the opponent or empty
                 return False
         return True
     
@@ -42,39 +42,38 @@ class Backgammon:
 
         # First move
         from_pos1, to_pos1 = first_move
-        state[from_pos1] -= player  
-        if(to_pos1 != 'throw_away'): state[to_pos1] += player  
+        state[from_pos1] -= 1  
+        if(to_pos1 != 'throw_away'): state[to_pos1] += 1 
 
         # Second move
         from_pos2, to_pos2 = second_move
-        state[from_pos2] -= player  
-        if(to_pos2 != 'throw_away'): state[to_pos2] += player  
+        state[from_pos2] -= 1 
+        if(to_pos2 != 'throw_away'): state[to_pos2] += 1
         
         return self.change_perspective(state, player) if player == -1 else state
-
     
-    def find_single_moves(self, state, player, roll):
+    def find_single_moves(self, state, roll):
         single_moves = []
         for from_pos in range(self.board_size):
-            if state[from_pos] * player > 0:  # Player has pieces at from_pos
+            if state[from_pos] > 0:  # Player has pieces at from_pos
                 to_pos = from_pos + roll 
-                if 0 <= to_pos < self.board_size and state[to_pos] * player >= 0:  # Valid move (empty or own pieces)
+                if 0 <= to_pos < self.board_size and state[to_pos] >= 0:  # Valid move (empty or own pieces)
                     single_moves.append((from_pos, to_pos))
-                elif 0 <= to_pos and self.can_throw_away(state, player):  
+                elif 0 <= to_pos and self.can_throw_away(state):  
                     single_moves.append((from_pos, 'throw_away'))
         return single_moves
     
-    def get_valid_moves(self, state, player, dice_rolls):
+    def get_valid_moves(self, currentState, player, dice_rolls):
         # Change perspective if player 2
-        state = self.change_perspective(state, player)
+        state = self.change_perspective(currentState, player)
         valid_moves = set()
         # should try to play the biggest dice first if both moves not possible
         dice_rolls = sorted(dice_rolls, reverse=True)
         
-        first_moves = self.find_single_moves(state, player, dice_rolls[0])  # Find valid moves for the biggest dice
+        first_moves = self.find_single_moves(state, dice_rolls[0])  # Find valid moves for the biggest dice
         if not first_moves:
             dice_rolls = sorted(dice_rolls)
-            first_moves = self.find_single_moves(state, player, dice_rolls[0])  # if biggest dice not possible, try smallest first
+            first_moves = self.find_single_moves(state, dice_rolls[0])  # if biggest dice not possible, try smallest first
             if not first_moves:
                 return [((0, 0), (0, 0))]  # No moves possible, return a dummy move
             
@@ -82,11 +81,11 @@ class Backgammon:
             new_state = state.copy()
             from_pos1, to_pos1 = move
             # Create a new state after the first move
-            new_state[from_pos1] -= player  
-            if(to_pos1 != 'throw_away'): new_state[to_pos1] += player  
+            new_state[from_pos1] -= 1  
+            if(to_pos1 != 'throw_away'): new_state[to_pos1] += 1
 
             # Find valid second moves for the new state using the second die roll
-            second_moves = self.find_single_moves(new_state, player, dice_rolls[1])
+            second_moves = self.find_single_moves(new_state, dice_rolls[1])
             if(not second_moves):
                 valid_moves.add((move, (0, 0)))
             for second_move in second_moves:
@@ -98,47 +97,21 @@ class Backgammon:
 
         return list(valid_moves)
 
-    def get_value_and_terminated(self, state):
-        if not np.any(state > 0):  
+    def get_value_and_terminated(self, state, player):
+        if not np.any(state > 0) and player == 1:  
             return 1, True  
 
-        if not np.any(state < 0): 
-            return -1, True  
+        if not np.any(state < 0) and player == -1: 
+            return 1, True  
 
         return 0, False  
-                                    
-
-game = Backgammon()              
-state = game.get_initial_state()
-dice_rolls = game.roll_dice()
-player = 1
-
-while True:
-    print("Current State:", state)
-    dice_rolls = game.roll_dice()
-    print("Dice Rolls:", dice_rolls)
-
-    valid_moves = game.get_valid_moves(state, player, dice_rolls)
-    print("Valid Moves:", valid_moves)
-
-    action = int(input(f"Player {player}, select your action (0-{len(valid_moves) - 1}): "))
     
-    if action < 0 or action >= len(valid_moves):
-        print("Action not valid, please choose a valid action.")
-        continue
-        
-    state = game.get_next_state(state, valid_moves[action], player)
+    def get_opponent(self, player):
+        return -player
     
-    value, is_terminal = game.get_value_and_terminated(state)
+    def get_opponent_value(self, value):
+        return -value
     
-    if is_terminal:
-        print("Final State:", state)
-        if value == -1:
-            print("Player 2 wins!")
-        elif value == 1:
-            print("Player 1 wins!")
-        else:
-            print("Game ended in a draw!")
-        break
-        
-    player = -player  # Switch player
+    def get_all_possible_dice_rolls(self):
+        return [(i, j) for i in range(1, 7) for j in range(i, 7)]
+                                
