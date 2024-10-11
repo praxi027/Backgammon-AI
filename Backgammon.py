@@ -8,8 +8,8 @@ class Backgammon:
         
     def get_initial_state(self):
         state = np.zeros(self.board_size, dtype=int)
-        state[0] = 2   
-        state[12] = -2
+        state[0] = 15
+        state[12] = -15
         # initial state (15, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -15, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
         return state
     
@@ -43,24 +43,25 @@ class Backgammon:
         # First move
         from_pos1, to_pos1 = first_move
         state[from_pos1] -= 1  
-        if(to_pos1 != 'throw_away'): state[to_pos1] += 1 
+        if(to_pos1 != 24): state[to_pos1] += 1 
 
         # Second move
         from_pos2, to_pos2 = second_move
         state[from_pos2] -= 1 
-        if(to_pos2 != 'throw_away'): state[to_pos2] += 1
+        if(to_pos2 != 24): state[to_pos2] += 1
         
         return self.change_perspective(state, player) if player == -1 else state
     
-    def find_single_moves(self, state, roll):
+    def find_single_moves(self, state, roll, can_play_from_bar=True):
         single_moves = []
-        for from_pos in range(self.board_size):
+        start_position = 0 if can_play_from_bar else 1   
+        for from_pos in range(start_position, self.board_size):
             if state[from_pos] > 0:  # Player has pieces at from_pos
                 to_pos = from_pos + roll 
                 if 0 <= to_pos < self.board_size and state[to_pos] >= 0:  # Valid move (empty or own pieces)
                     single_moves.append((from_pos, to_pos))
                 elif 0 <= to_pos and self.can_throw_away(state):  
-                    single_moves.append((from_pos, 'throw_away'))
+                    single_moves.append((from_pos, 24))  # Throw away piece
         return single_moves
     
     def get_valid_moves(self, currentState, player, dice_rolls):
@@ -82,16 +83,14 @@ class Backgammon:
             from_pos1, to_pos1 = move
             # Create a new state after the first move
             new_state[from_pos1] -= 1  
-            if(to_pos1 != 'throw_away'): new_state[to_pos1] += 1
+            if(to_pos1 != 24): new_state[to_pos1] += 1
 
             # Find valid second moves for the new state using the second die roll
-            second_moves = self.find_single_moves(new_state, dice_rolls[1])
+            second_moves = self.find_single_moves(new_state, dice_rolls[1], can_play_from_bar=from_pos1 != 0)
             if(not second_moves):
                 valid_moves.add((move, (0, 0)))
             for second_move in second_moves:
                 from_pos2, to_pos2 = second_move  
-                if(from_pos1 == from_pos2 == 0):    # Check if two moves were made from index 0
-                    continue
                 move_pair = tuple(sorted([(from_pos1, to_pos1), (from_pos2, to_pos2)]))     
                 valid_moves.add(move_pair)
 
@@ -115,3 +114,32 @@ class Backgammon:
     def get_all_possible_dice_rolls(self):
         return [(i, j) for i in range(1, 7) for j in range(i, 7)]
                                 
+if __name__ == "__main__":
+    game = Backgammon()              
+    state = game.get_initial_state()
+    dice_rolls = game.roll_dice()
+    player = 1
+
+    while True:
+        print("Current State:", state)
+        dice_rolls = game.roll_dice()
+        print("Dice Rolls:", dice_rolls)
+
+        valid_moves = game.get_valid_moves(state, player, dice_rolls)
+        print("Valid Moves:", valid_moves)
+
+        action = int(input(f"Player {player}, select your action (0-{len(valid_moves) - 1}): "))
+        
+        if action < 0 or action >= len(valid_moves):
+            print("Action not valid, please choose a valid action.")
+            continue
+            
+        state = game.get_next_state(state, valid_moves[action], player)
+        
+        value, is_terminal = game.get_value_and_terminated(state, player)
+        
+        if is_terminal:
+            print("Player ", player, " wins!")
+            break
+            
+        player = -player  # Switch player

@@ -2,6 +2,7 @@ import numpy as np
 import math
 from Backgammon import Backgammon
 import random
+import time
 
 class Node:
     def __init__(self, game, args, state, dice_rolls=None, parent=None, action_taken=None, is_chance_node=False):
@@ -23,7 +24,7 @@ class Node:
             self.expandable_moves = game.get_valid_moves(state, 1, dice_rolls)
             
     def is_fully_expanded(self):
-        return np.sum(self.expandable_moves) == 0 and len(self.children) > 0
+        return len(self.expandable_moves) == 0 and len(self.children) > 0
     
     def select(self):
         if self.is_chance_node:
@@ -46,7 +47,6 @@ class Node:
         return q_value + self.args['C'] * math.sqrt(math.log(self.visit_count) / child.visit_count)
     
     def expand(self):
-        child = Node(self.game, self.args, self.state, is_chance_node=True)
         if self.is_chance_node:
             dice_roll = random.choice(self.expandable_moves)
             self.expandable_moves.remove(dice_roll)
@@ -86,6 +86,7 @@ class Node:
                 return value
 
             rollout_player = self.game.get_opponent(rollout_player)
+            self.game.change_perspective(rollout_state, rollout_player)
             
     def backpropagate(self, value):
         self.value_sum += value
@@ -108,7 +109,7 @@ class MCTS:
             node = root
 
             # Selection
-            while node.is_fully_expanded() and not node.is_chance_node:
+            while node.is_fully_expanded():
                 node = node.select()
                 
             value, is_terminal = self.game.get_value_and_terminated(node.state, node.action_taken)
@@ -135,6 +136,62 @@ class MCTS:
     
     
 # ------------------------------------------------------------------------------------------------------    
+def play_games(num_games, args):
+    backgammon = Backgammon()
+    mcts = MCTS(backgammon, args)
+
+    results = {'AI Wins': 0, 'Random Wins': 0}
+
+    for _ in range(num_games):
+        state = backgammon.get_initial_state()
+        player = 1  # 1 for AI, -1 for random
+
+        while True:
+            # Roll the dice
+            dice_rolls = backgammon.roll_dice()
+
+            # Get valid moves based on the dice roll
+            valid_moves = backgammon.get_valid_moves(state, player, dice_rolls)
+
+            if player == -1:
+                # AI player
+                ai_state = state
+                ai_state = backgammon.change_perspective(state, player)
+                action, _ = mcts.search(ai_state, dice_rolls)
+            else:
+                action = random.choice(valid_moves)
+
+            # Apply the move to the state
+            state = backgammon.get_next_state(state, action, player)
+
+            # Check if the game has ended
+            value, is_terminal = backgammon.get_value_and_terminated(state, player)
+            if is_terminal:
+                if player == -1:
+                    results['AI Wins'] += 1
+                else:
+                    results['Random Wins'] += 1
+                break
+
+            # Switch players
+            player = -player
+
+    return results
+
+# Run the games
+# args = {
+#     'C': 1.41,
+#     'num_searches': 1000
+# }
+# num_games = 1
+# start_time = time.time()
+# results = play_games(num_games, args)
+# end_time = time.time()
+# print(f"Training time for {num_games} games: {(end_time - start_time)/60:.2f} minutes")
+# print(f"Results after {num_games} games:")
+# print(f"AI Wins: {results['AI Wins']}")
+# print(f"Random Wins: {results['Random Wins']}")
+
 args = {
     'C': 1.41,
     'num_searches': 1000
@@ -155,10 +212,6 @@ while True:
 
     # Get valid moves based on the dice roll
     valid_moves = backgammon.get_valid_moves(state, player, dice_rolls)
-    if not valid_moves:
-        print(f"Player {player} has no valid moves.")
-        player = -player
-        continue
 
     if player == 1:
         print("Valid moves:")
