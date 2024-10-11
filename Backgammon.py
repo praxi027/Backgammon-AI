@@ -5,6 +5,7 @@ class Backgammon:
     def __init__(self):
         self.board = np.array([])
         self.board_size = 24  # 24 positions on the board
+        self.action_size = 225  # 15 possible moves
         
     def get_initial_state(self):
         state = np.zeros(self.board_size, dtype=int)
@@ -113,33 +114,11 @@ class Backgammon:
     
     def get_all_possible_dice_rolls(self):
         return [(i, j) for i in range(1, 7) for j in range(i, 7)]
-                                
-if __name__ == "__main__":
-    game = Backgammon()              
-    state = game.get_initial_state()
-    dice_rolls = game.roll_dice()
-    player = 1
-
-    while True:
-        print("Current State:", state)
-        dice_rolls = game.roll_dice()
-        print("Dice Rolls:", dice_rolls)
-
-        valid_moves = game.get_valid_moves(state, player, dice_rolls)
-        print("Valid Moves:", valid_moves)
-
-        action = int(input(f"Player {player}, select your action (0-{len(valid_moves) - 1}): "))
+    
+    def get_encoded_state(self, state):
+        player1_layer = np.clip(state, 0, None).astype(np.float32)
+        player2_layer = np.clip(-state, 0, None).astype(np.float32)
+        empty_layer = (state == 0).astype(np.float32)
+        encoded_state = np.stack((player1_layer, player2_layer, empty_layer))
         
-        if action < 0 or action >= len(valid_moves):
-            print("Action not valid, please choose a valid action.")
-            continue
-            
-        state = game.get_next_state(state, valid_moves[action], player)
-        
-        value, is_terminal = game.get_value_and_terminated(state, player)
-        
-        if is_terminal:
-            print("Player ", player, " wins!")
-            break
-            
-        player = -player  # Switch player
+        return encoded_state

@@ -1,8 +1,6 @@
 import numpy as np
 import math
-from Backgammon import Backgammon
 import random
-import time
 
 class Node:
     def __init__(self, game, args, state, dice_rolls=None, parent=None, action_taken=None, is_chance_node=False):
@@ -83,10 +81,11 @@ class Node:
 
             value, is_terminal = self.game.get_value_and_terminated(rollout_state, rollout_player)
             if is_terminal:
+                if rollout_player == -1:
+                    value = self.game.get_opponent_value(value)
                 return value
 
             rollout_player = self.game.get_opponent(rollout_player)
-            self.game.change_perspective(rollout_state, rollout_player)
             
     def backpropagate(self, value):
         self.value_sum += value
@@ -133,111 +132,3 @@ class MCTS:
             action_probs = {action: count / total_visits for action, count in action_probs.items()}
         best_action = max(action_probs, key=action_probs.get)
         return best_action, action_probs
-    
-    
-# ------------------------------------------------------------------------------------------------------    
-def play_games(num_games, args):
-    backgammon = Backgammon()
-    mcts = MCTS(backgammon, args)
-
-    results = {'AI Wins': 0, 'Random Wins': 0}
-
-    for _ in range(num_games):
-        state = backgammon.get_initial_state()
-        player = 1  # 1 for AI, -1 for random
-
-        while True:
-            # Roll the dice
-            dice_rolls = backgammon.roll_dice()
-
-            # Get valid moves based on the dice roll
-            valid_moves = backgammon.get_valid_moves(state, player, dice_rolls)
-
-            if player == -1:
-                # AI player
-                ai_state = state
-                ai_state = backgammon.change_perspective(state, player)
-                action, _ = mcts.search(ai_state, dice_rolls)
-            else:
-                action = random.choice(valid_moves)
-
-            # Apply the move to the state
-            state = backgammon.get_next_state(state, action, player)
-
-            # Check if the game has ended
-            value, is_terminal = backgammon.get_value_and_terminated(state, player)
-            if is_terminal:
-                if player == -1:
-                    results['AI Wins'] += 1
-                else:
-                    results['Random Wins'] += 1
-                break
-
-            # Switch players
-            player = -player
-
-    return results
-
-# Run the games
-# args = {
-#     'C': 1.41,
-#     'num_searches': 1000
-# }
-# num_games = 1
-# start_time = time.time()
-# results = play_games(num_games, args)
-# end_time = time.time()
-# print(f"Training time for {num_games} games: {(end_time - start_time)/60:.2f} minutes")
-# print(f"Results after {num_games} games:")
-# print(f"AI Wins: {results['AI Wins']}")
-# print(f"Random Wins: {results['Random Wins']}")
-
-args = {
-    'C': 1.41,
-    'num_searches': 1000
-}
-
-backgammon = Backgammon()
-mcts = MCTS(backgammon, args)
-
-state = backgammon.get_initial_state()
-player = 1  # 1 for human, -1 for AI
-
-while True:
-    print(state)
-    
-    # Roll the dice
-    dice_rolls = backgammon.roll_dice()
-    print(f"Player {player} rolled: {dice_rolls}")
-
-    # Get valid moves based on the dice roll
-    valid_moves = backgammon.get_valid_moves(state, player, dice_rolls)
-
-    if player == 1:
-        print("Valid moves:")
-        for idx, move in enumerate(valid_moves):
-            print(f"{idx}: {move}")
-        move_index = int(input(f"Player {player}, select a move: "))
-        if 0 <= move_index < len(valid_moves):
-            action = valid_moves[move_index]
-        else:
-            print("Invalid move selection. Try again.")
-            continue
-    else:
-        ai_state = state
-        ai_state = backgammon.change_perspective(state, player)
-        action ,mcts_probs = mcts.search(ai_state, dice_rolls)
-        print(f"AI selects move: {action}")
-
-    # Apply the move to the state
-    state = backgammon.get_next_state(state, action, player)
-    
-    # Check if the game has ended
-    value, is_terminal = backgammon.get_value_and_terminated(state, player)
-    if is_terminal:
-        print(state)
-        print(f"Player {player} wins.")
-        break
-
-    # Switch players
-    player = -player
