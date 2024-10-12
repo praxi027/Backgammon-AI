@@ -63,7 +63,7 @@ class Node:
         return child
     
     def simulate(self):
-        value, is_terminal = self.game.get_value_and_terminated(self.state, self.action_taken)
+        value, is_terminal = self.game.get_value_and_terminated(self.state)
         value = self.game.get_opponent_value(value)
 
         if is_terminal:
@@ -77,9 +77,8 @@ class Node:
             valid_moves = self.game.get_valid_moves(rollout_state, rollout_player, dice_roll)
             action = random.choice(valid_moves)
             rollout_state = self.game.get_next_state(rollout_state, action, rollout_player)
-            value, is_terminal = self.game.get_value_and_terminated(rollout_state, rollout_player)
+            value, is_terminal = self.game.get_value_and_terminated(rollout_state)
 
-            value, is_terminal = self.game.get_value_and_terminated(rollout_state, rollout_player)
             if is_terminal:
                 if rollout_player == -1:
                     value = self.game.get_opponent_value(value)
@@ -88,12 +87,16 @@ class Node:
             rollout_player = self.game.get_opponent(rollout_player)
             
     def backpropagate(self, value):
-        self.value_sum += value
-        self.visit_count += 1
-        
-        value = self.game.get_opponent_value(value)
-        if self.parent is not None:
-            self.parent.backpropagate(value)  
+        if self.is_chance_node:
+            self.value_sum += value
+            self.visit_count += 1
+            value = self.game.get_opponent_value(value)
+            self.parent.backpropagate(value) 
+        else:
+            self.value_sum += value
+            self.visit_count += 1
+            if self.parent is not None:
+                self.parent.backpropagate(value)  
 
 
 class MCTS:
@@ -111,17 +114,16 @@ class MCTS:
             while node.is_fully_expanded():
                 node = node.select()
                 
-            value, is_terminal = self.game.get_value_and_terminated(node.state, node.action_taken)
+            value, is_terminal = self.game.get_value_and_terminated(node.state)
             value = self.game.get_opponent_value(value)
             
-            # Expansion
-            if not is_terminal:
+            if node.is_chance_node:
                 node = node.expand()
-                # Simulation
-                value = node.simulate()
-
-            # Backpropagation
-            node.backpropagate(value)
+            else:
+                if not is_terminal:
+                    node = node.expand()
+                    value = node.simulate()
+                node.backpropagate(value)
 
         # Choose the action with the highest visit count
         action_probs = {}

@@ -97,11 +97,8 @@ class Backgammon:
 
         return list(valid_moves)
 
-    def get_value_and_terminated(self, state, player):
-        if not np.any(state > 0) and player == 1:  
-            return 1, True  
-
-        if not np.any(state < 0) and player == -1: 
+    def get_value_and_terminated(self, state):
+        if not np.any(state > 0) or not np.any(state < 0):  
             return 1, True  
 
         return 0, False  

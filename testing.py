@@ -26,7 +26,7 @@ def play_multiplayer():
             
         state = game.get_next_state(state, valid_moves[action], player)
         
-        value, is_terminal = game.get_value_and_terminated(state, player)
+        value, is_terminal = game.get_value_and_terminated(state)
         
         if is_terminal:
             print("Player ", player, " wins!")
@@ -71,7 +71,7 @@ def play_vs_ai(args):
         state = backgammon.get_next_state(state, action, player)
         
         # Check if the game has ended
-        value, is_terminal = backgammon.get_value_and_terminated(state, player)
+        value, is_terminal = backgammon.get_value_and_terminated(state)
         if is_terminal:
             print(state)
             print(f"Player {player} wins.")
@@ -106,7 +106,7 @@ def simulate_random_games():
             state = backgammon.get_next_state(state, action, player)
 
             # Check if the game has ended
-            value, is_terminal = backgammon.get_value_and_terminated(state, player)
+            value, is_terminal = backgammon.get_value_and_terminated(state)
             if is_terminal:
                 if player == -1:
                     results['Random Wins 1'] += 1
@@ -127,7 +127,7 @@ def simulate_ai_vs_random(num_games, args):
 
     for _ in tqdm(range(num_games), desc="Playing Games"):
         state = backgammon.get_initial_state()
-        player = 1  # 1 for AI, -1 for random
+        player = 1  # -1 for AI, 1 for random
 
         while True:
             # Roll the dice
@@ -148,26 +148,25 @@ def simulate_ai_vs_random(num_games, args):
             state = backgammon.get_next_state(state, action, player)
 
             # Check if the game has ended
-            value, is_terminal = backgammon.get_value_and_terminated(state, player)
+            value, is_terminal = backgammon.get_value_and_terminated(state)
             if is_terminal:
                 if player == -1:
                     results['AI Wins'] += 1
+                    print()
+                    print("AI Wins")
                 else:
                     results['Random Wins'] += 1
+                    print()
+                    print("Random Wins")
                 break
 
             # Switch players
             player = -player
+    return results
 
 def run_simulation(args):
     # Get the number of games from the user
     num_games = int(input("Enter the number of games to simulate: "))
-    
-    # Arguments for MCTS or other parameters
-    args = {
-        'C': 1.41,
-        'num_searches': 1000
-    }
     
     # Start timing the simulation
     start_time = time.time()
@@ -182,7 +181,7 @@ def run_simulation(args):
     
 args = {
     'C': 1.41,
-    'num_searches': 1000
+    'num_searches': 100
 }
 
 if __name__ == "__main__":
