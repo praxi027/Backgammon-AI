@@ -18,11 +18,6 @@ class Node:
         
         if is_chance_node:
             self.expandable_moves = game.get_all_possible_dice_rolls()
-            # Create all children nodes for each possible dice roll outcome
-            for dice_roll in self.expandable_moves:
-                child = Node(self.game, self.args, self.state, dice_rolls=dice_roll, parent=self, action_taken=self.action_taken, is_chance_node=False)
-                self.children.append(child)
-            self.expandable_moves = []
         else:
             self.expandable_moves = game.get_valid_moves(state, 1, dice_rolls)
             
@@ -76,10 +71,9 @@ class Node:
 
         rollout_state = self.state.copy()
         rollout_player = 1
-
+        dice_rolls = self.dice_rolls if not self.is_chance_node else self.game.roll_dice()
         while True:
-            dice_roll = self.game.roll_dice()
-            valid_moves = self.game.get_valid_moves(rollout_state, rollout_player, dice_roll)
+            valid_moves = self.game.get_valid_moves(rollout_state, rollout_player, dice_rolls)
             action = random.choice(valid_moves)
             rollout_state = self.game.get_next_state(rollout_state, action, rollout_player)
             value, is_terminal = self.game.get_value_and_terminated(rollout_state)
@@ -90,6 +84,7 @@ class Node:
                 return value
 
             rollout_player = self.game.get_opponent(rollout_player)
+            dice_rolls = self.game.roll_dice()
             
     def backpropagate(self, value):
         if self.is_chance_node:

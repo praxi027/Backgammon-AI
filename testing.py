@@ -127,7 +127,8 @@ def simulate_ai_vs_random(num_games, args):
 
     for _ in tqdm(range(num_games), desc="Playing Games"):
         state = backgammon.get_initial_state()
-        player = 1  # -1 for AI, 1 for random
+        
+        player = 1  if _ % 2 == 0 else -1
 
         while True:
             # Roll the dice
@@ -167,7 +168,8 @@ def simulate_ai_vs_random(num_games, args):
 def run_simulation(args):
     # Get the number of games from the user
     num_games = int(input("Enter the number of games to simulate: "))
-    
+    searches = int(input("Enter the number of searches for MCTS: "))
+    args['num_searches'] = searches
     # Start timing the simulation
     start_time = time.time()
     results = simulate_ai_vs_random(num_games, args)  # Assuming simulate_ai_vs_random is defined elsewhere

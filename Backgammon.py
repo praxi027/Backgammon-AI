@@ -29,9 +29,8 @@ class Backgammon:
         return state  # For player 1, no shift is needed
     
     def can_throw_away(self, state):
-        # Check if all pieces are in the final quarter (positions 18 to 23) and not occupied by the opponent
         for pos in range(0, 18):
-            if state[pos] > 0:  # If any position is occupied by the opponent or empty
+            if state[pos] > 0:  
                 return False
         return True
     
