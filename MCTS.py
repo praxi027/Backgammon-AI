@@ -18,6 +18,11 @@ class Node:
         
         if is_chance_node:
             self.expandable_moves = game.get_all_possible_dice_rolls()
+            # Create all children nodes for each possible dice roll outcome
+            for dice_roll in self.expandable_moves:
+                child = Node(self.game, self.args, self.state, dice_rolls=dice_roll, parent=self, action_taken=self.action_taken, is_chance_node=False)
+                self.children.append(child)
+            self.expandable_moves = []
         else:
             self.expandable_moves = game.get_valid_moves(state, 1, dice_rolls)
             
@@ -45,7 +50,7 @@ class Node:
         return q_value + self.args['C'] * math.sqrt(math.log(self.visit_count) / child.visit_count)
     
     def expand(self):
-        if self.is_chance_node:
+        if self.is_chance_node: # should never happen
             dice_roll = random.choice(self.expandable_moves)
             self.expandable_moves.remove(dice_roll)
             
@@ -116,14 +121,11 @@ class MCTS:
                 
             value, is_terminal = self.game.get_value_and_terminated(node.state)
             value = self.game.get_opponent_value(value)
-            
-            if node.is_chance_node:
+            if not is_terminal:
                 node = node.expand()
-            else:
-                if not is_terminal:
-                    node = node.expand()
-                    value = node.simulate()
-                node.backpropagate(value)
+                value = node.simulate()
+            
+            node.backpropagate(value)
 
         # Choose the action with the highest visit count
         action_probs = {}
