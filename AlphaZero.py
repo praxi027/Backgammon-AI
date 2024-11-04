@@ -71,7 +71,7 @@ class AlphaZero:
             value_loss = F.mse_loss(out_value, value_targets)
             loss = policy_loss + value_loss
             
-            optimizer.zero_grad() # change to self.optimizer
+            self.optimizer.zero_grad() # change to self.optimizer
             loss.backward()
             optimizer.step() # change to self.optimizer
     
