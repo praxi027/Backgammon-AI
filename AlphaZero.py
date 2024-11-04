@@ -54,7 +54,6 @@ class AlphaZero:
             player = self.game.get_opponent(player)
                 
     def train(self, memory):
-        pass
         random.shuffle(memory)
         for batchIdx in range(0, len(memory), self.args['batch_size']):
             sample = memory[batchIdx:min(len(memory) - 1, batchIdx + self.args['batch_size'])] # Change to memory[batchIdx:batchIdx+self.args['batch_size']] in case of an error
