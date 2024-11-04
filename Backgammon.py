@@ -186,19 +186,17 @@ class Backgammon:
         """
         result = 0
         move1, move2 = move
-        dice1 = abs(move1[1] - move1[0]) if move1 != (0, 0) else 0  # Treat as 0 if dummy
-        dice2 = abs(move2[1] - move2[0]) if move2 != (0, 0) else 0  # Treat as 0 if dummy
+        dice1 = abs(move1[1] - move1[0]) if move1 != (0, 0) else 0  
+        dice2 = abs(move2[1] - move2[0]) if move2 != (0, 0) else 0  
 
         # Determine if smaller die moves first by checking dice values
         if dice1 < dice2:
             move1, move2 = move2, move1
-            result += 26 * 26  # Higher range if smaller die moves first
+            result += 26 * 26 
 
-        # Handle dummy moves by using index 25 for start position
-        start1_index = move1[0] if move1 != (0, 0) else 25  # 25 for dummy move
-        start2_index = move2[0] if move2 != (0, 0) else 25  # 25 for dummy move
+        start1_index = move1[0] if move1 != (0, 0) else 25  
+        start2_index = move2[0] if move2 != (0, 0) else 25  
 
-        # Encode using base 26 with the adjusted start positions
         result += start1_index * 26 + start2_index
         return result
 
@@ -215,19 +213,15 @@ class Backgammon:
         else:
             smaller_first = False
 
-        # Decode starting positions from base 26 encoding
         start1 = encoded // 26
         start2 = encoded % 26
 
-        # Determine which dice value is smaller
         if dice_roll[0] < dice_roll[1]:
             small_die, large_die = dice_roll[0], dice_roll[1]
         else:
             small_die, large_die = dice_roll[1], dice_roll[0]
 
-        # Construct moves based on whether the smaller die moved first
         if smaller_first:
-            # Check for dummy moves and out-of-bounds ends
             move1 = (0, 0) if start2 == 25 else (start2, min(start2 + small_die, 24))
             move2 = (0, 0) if start1 == 25 else (start1, min(start1 + large_die, 24))
         else:

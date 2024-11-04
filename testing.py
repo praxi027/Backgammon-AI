@@ -3,6 +3,8 @@ from MCTS import MCTS
 import random
 from tqdm import tqdm
 import time
+from MCTS_AlphaZero import MCTS_AlphaZero
+from Model import ResNet
 
 def play_multiplayer():
     game = Backgammon()              
@@ -80,14 +82,16 @@ def play_vs_ai(args):
         # Switch players
         player = -player
 
-def simulate_random_games():
+def simulate_ai_vs_random(num_games, args):
     backgammon = Backgammon()
-    num_games = int(input("Enter the number of games to simulate: "))
-    results = {'Random Wins 1': 0, 'Random Wins 2': 0}
+    mcts = MCTS(backgammon, args)
+    
+    results = {'AI Wins': 0, 'Random Wins': 0}
 
     for _ in tqdm(range(num_games), desc="Playing Games"):
         state = backgammon.get_initial_state()
-        player = 1  # 1 for AI, -1 for random
+        
+        player = 1  if _ % 2 == 0 else -1
 
         while True:
             # Roll the dice
@@ -98,7 +102,9 @@ def simulate_random_games():
 
             if player == -1:
                 # AI player
-                action = random.choice(valid_moves)
+                ai_state = state
+                ai_state = backgammon.change_perspective(state, player)
+                action ,mcts_probs = mcts.search(ai_state, dice_rolls)
             else:
                 action = random.choice(valid_moves)
 
@@ -109,19 +115,24 @@ def simulate_random_games():
             value, is_terminal = backgammon.get_value_and_terminated(state)
             if is_terminal:
                 if player == -1:
-                    results['Random Wins 1'] += 1
+                    results['AI Wins'] += 1
+                    print()
+                    print("AI Wins")
                 else:
-                    results['Random Wins 2'] += 1
+                    results['Random Wins'] += 1
+                    print()
+                    print("Random Wins")
                 break
 
             # Switch players
             player = -player
+    return results
 
-    print(results)
-
-def simulate_ai_vs_random(num_games, args):
+def simulate_ai_vs_random_AlphaZero(num_games, args):
     backgammon = Backgammon()
-    mcts = MCTS(backgammon, args)
+    model = ResNet(backgammon, 4, 64)
+    model.eval()
+    mcts = MCTS_AlphaZero(backgammon, model, args)
     
     results = {'AI Wins': 0, 'Random Wins': 0}
 
@@ -181,6 +192,21 @@ def run_simulation(args):
     print(f"AI Wins: {results['AI Wins']}")
     print(f"Random Wins: {results['Random Wins']}")
     
+def run_simulation_AlphaZero(args):
+    num_games = int(input("Enter the number of games to simulate: "))
+    searches = int(input("Enter the number of searches for MCTS: "))
+    args['num_searches'] = searches
+    # Start timing the simulation
+    start_time = time.time()
+    results = simulate_ai_vs_random_AlphaZero(num_games, args)  # Assuming simulate_ai_vs_random is defined elsewhere
+    end_time = time.time()
+    
+    # Print results
+    print(f"Training time for {num_games} games: {(end_time - start_time)/60:.2f} minutes")
+    print(f"Results after {num_games} games:")
+    print(f"AI Wins: {results['AI Wins']}")
+    print(f"Random Wins: {results['Random Wins']}")
+    
 args = {
     'C': 1.41,
     'num_searches': 100
@@ -188,20 +214,20 @@ args = {
 
 if __name__ == "__main__":
     print("Choose an option to run:")
-    print("1: Simulate Random Games")
-    print("2: Play Backgammon Multiplayer")
-    print("3: Play Backgammon vs AI")
-    print("4: Run AI vs Random Simulation")
+    print("1: Play Backgammon Multiplayer")
+    print("2: Play Backgammon vs AI")
+    print("3: Run AI vs Random Simulation")
+    print("4: Run AI vs Random Simulation (AlphaZero)")
     choice = int(input("Enter your choice (1-4): "))
 
     if choice == 1:
-        simulate_random_games()
-    elif choice == 2:
         play_multiplayer()
-    elif choice == 3:
+    elif choice == 2:
         play_vs_ai(args)
-    elif choice == 4:
+    elif choice == 3:
         run_simulation(args)
+    elif choice == 4:
+        run_simulation_AlphaZero(args)
     else:
         print("Invalid choice. Please run the program again and choose a valid option.")
 
