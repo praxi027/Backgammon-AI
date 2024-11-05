@@ -20,20 +20,12 @@ class Backgammon:
         return dice_rolls
     
     def change_perspective(self, state, player):
-        shifted_state = np.zeros(self.board_size, dtype=int)
         if player == -1:
-            # Shift the state for player 2
-            shifted_state = state.copy()
-            for i in range(self.board_size):
-                shifted_state[i-12] = -state[i]
-            return shifted_state
-        return state  # For player 1, no shift is needed
+            return -np.roll(state, -12)
+        return state  
     
     def can_throw_away(self, state):
-        for pos in range(0, 18):
-            if state[pos] > 0:  
-                return False
-        return True
+        return np.all(state[:18] <= 0)
     
     def get_next_state(self, state, action, player): 
         # Unpack the action tuple
@@ -66,7 +58,6 @@ class Backgammon:
         return single_moves
     
     def get_valid_moves(self, currentState, player, dice_rolls):
-        # Change perspective if player 2
         state = self.change_perspective(currentState, player)
         valid_moves = set()
         # should try to play the biggest dice first if both moves not possible
@@ -94,7 +85,8 @@ class Backgammon:
                 from_pos2, to_pos2 = second_move  
                 move_pair = tuple(sorted([(from_pos1, to_pos1), (from_pos2, to_pos2)]))     
                 valid_moves.add(move_pair)
-
+        
+        state = self.change_perspective(currentState, player)   # change perspective back
         return list(valid_moves)
 
     def get_value_and_terminated(self, state):
@@ -172,12 +164,11 @@ class Backgammon:
 
     
     def get_valid_moves_encoded(self, state, dice_roll):
-        valid_moves = self.get_valid_moves(state, 1, dice_roll)
-        encoded = np.zeros(26*26*2)
-        for move in valid_moves:
-            encoded_move = self.encode_move(move)
-            encoded[encoded_move] = 1
+        encoded = np.zeros(26 * 26 * 2, dtype=int)
+        for move in self.get_valid_moves(state, 1, dice_roll):
+            encoded[self.encode_move(move)] = 1
         return encoded
+
             
     def encode_move(self, move):
         """
