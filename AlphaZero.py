@@ -1,3 +1,6 @@
+import cProfile
+import pstats
+from io import StringIO
 import numpy as np
 import random
 import torch
@@ -24,18 +27,15 @@ class AlphaZero:
             dice_roll = self.game.roll_dice()
             neutral_state = self.game.change_perspective(state, player)
             best_action, action_probs = self.mcts.search(neutral_state, dice_roll)
-            # Extract moves and probabilities from the dictionary
+            
             probs = np.zeros(self.game.action_size, dtype=np.float32)
             for move, prob in action_probs.items():
-                index = self.game.encode_move(move)  # Get the index for the move
+                index = self.game.encode_move(move)
                 probs[index] = prob
             memory.append((neutral_state, dice_roll, probs, player))
             
-            # Choose a random index based on probabilities
             action = np.random.choice(self.game.action_size, p=probs)
-
             action = self.game.decode_move(action, dice_roll)
-
             state = self.game.get_next_state(state, action, player)
             
             value, is_terminal = self.game.get_value_and_terminated(state)
@@ -56,14 +56,12 @@ class AlphaZero:
     def train(self, memory):
         random.shuffle(memory)
         for batchIdx in range(0, len(memory), self.args['batch_size']):
-            sample = memory[batchIdx:min(len(memory) - 1, batchIdx + self.args['batch_size'])] # Change to memory[batchIdx:batchIdx+self.args['batch_size']] in case of an error
+            sample = memory[batchIdx:min(len(memory) - 1, batchIdx + self.args['batch_size'])]
             state, policy_targets, value_targets = zip(*sample)
             
-            state, policy_targets, value_targets = np.array(state), np.array(policy_targets), np.array(value_targets).reshape(-1, 1)
-            
-            state = torch.tensor(state, dtype=torch.float32)
-            policy_targets = torch.tensor(policy_targets, dtype=torch.float32)
-            value_targets = torch.tensor(value_targets, dtype=torch.float32)
+            state = torch.tensor(np.array(state), dtype=torch.float32)
+            policy_targets = torch.tensor(np.array(policy_targets), dtype=torch.float32)
+            value_targets = torch.tensor(np.array(value_targets).reshape(-1, 1), dtype=torch.float32)
             
             out_policy, out_value = self.model(state)
             
@@ -71,14 +69,13 @@ class AlphaZero:
             value_loss = F.mse_loss(out_value, value_targets)
             loss = policy_loss + value_loss
             
-            self.optimizer.zero_grad() # change to self.optimizer
+            self.optimizer.zero_grad()
             loss.backward()
-            optimizer.step() # change to self.optimizer
+            self.optimizer.step()
     
     def learn(self):
         for iteration in range(self.args['num_iterations']):
             memory = []
-            
             self.model.eval()
             for _ in tqdm(range(self.args['num_selfPlay_iterations'])):
                 memory += self.selfPlay()
@@ -89,23 +86,58 @@ class AlphaZero:
             
             torch.save(self.model.state_dict(), f"model_{iteration}.pt")
             torch.save(self.optimizer.state_dict(), f"optimizer_{iteration}.pt")
-            
-            
-game = Backgammon()
 
-model = ResNet(game, 4, 64)
+def profile_learn():
+    game = Backgammon()
+    model = ResNet(game, 4, 64)
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+    args = {
+        'C': 2,
+        'num_searches': 60,
+        'num_iterations': 3,
+        'num_selfPlay_iterations': 1,
+        'num_epochs': 4,
+        'batch_size': 64
+    }
+    alphaZero = AlphaZero(model, optimizer, game, args)
 
-optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+    # Profile the learn function with detailed stats
+    with cProfile.Profile() as profiler:
+        alphaZero.learn()
 
-args = {
-    'C': 2,
-    'num_searches': 60 ,
-    'num_iterations': 3,
-    'num_selfPlay_iterations': 1,
-    'num_epochs': 4,
-    'batch_size': 64
-}
+    # Save and display profiling results
+    stats = pstats.Stats(profiler)
+    stats.sort_stats(pstats.SortKey.CUMULATIVE).print_stats(20)  # Top 20 functions by cumulative time
+    stats.print_callers(10)  # Show callers for top 10 time-consuming calls
+    stats.dump_stats("learn_profile.prof")  # Save data to file for later analysis
 
-alphaZero = AlphaZero(model, optimizer, game, args)
-alphaZero.learn()
-            
+# Enhanced profiling function for selfPlay
+def profile_self_play():
+    game = Backgammon()
+    model = ResNet(game, 4, 64)
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+    args = {
+        'C': 2,
+        'num_searches': 60,
+        'num_iterations': 3,
+        'num_selfPlay_iterations': 1,
+        'num_epochs': 4,
+        'batch_size': 64
+    }
+    alphaZero = AlphaZero(model, optimizer, game, args)
+
+    # Profile the selfPlay function with detailed stats
+    with cProfile.Profile() as profiler:
+        alphaZero.selfPlay()
+
+    # Save and display profiling results
+    stats = pstats.Stats(profiler)
+    stats.sort_stats(pstats.SortKey.CUMULATIVE).print_stats(20)  # Top 20 functions by cumulative time
+    stats.print_callers(10)  # Show callers for top 10 time-consuming calls
+    stats.dump_stats("selfplay_profile.prof")  # Save data to file for later analysis
+
+if __name__ == "__main__":
+    print("Profiling the learn function...")
+    profile_learn()
+    print("\nProfiling the selfPlay function...")
+    profile_self_play()
