@@ -3,6 +3,7 @@ import math
 import random
 import torch 
 from Backgammon import Backgammon
+from concurrent.futures import ThreadPoolExecutor
 
 class Node:
     def __init__(self, game, args, state, dice_rolls=None, parent=None, action_taken=None, is_chance_node=False, prior=0):
@@ -61,15 +62,26 @@ class Node:
         return q_value + self.args['C'] * (math.sqrt(self.visit_count) / (child.visit_count + 1)) * child.prior
     
     def expand(self, policy):
-        for action, prob in enumerate(policy):
-            if prob > 0:        
-                child_state = self.state.copy()
-                decoded_action = self.game.decode_move(action, self.dice_rolls)
-                child_state = self.game.get_next_state(self.state, decoded_action, 1)
-                child_state = self.game.change_perspective(child_state, -1)
-                child = Node(self.game, self.args, child_state, dice_rolls=None, parent=self, action_taken=decoded_action, is_chance_node=True, prior = prob)
-                self.children.append(child)
-        return child
+        def create_child(action, prob):
+            child_state = self.state.copy()
+            decoded_action = self.game.decode_move(action, self.dice_rolls)
+            child_state = self.game.get_next_state(self.state, decoded_action, 1)
+            child_state = self.game.change_perspective(child_state, -1)
+            return Node(
+                self.game, self.args, child_state, dice_rolls=None, parent=self, 
+                action_taken=decoded_action, is_chance_node=True, prior=prob
+            )
+
+        with ThreadPoolExecutor() as executor:
+            # Submit tasks to create children in parallel for each action with a non-zero probability
+            futures = [
+                executor.submit(create_child, action, prob)
+                for action, prob in enumerate(policy) if prob > 0
+            ]
+            # Wait for all tasks to complete and collect the results
+            self.children.extend(f.result() for f in futures)
+
+        return self.children[0] if self.children else None
             
     def backpropagate(self, value):
         if self.is_chance_node:
