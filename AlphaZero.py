@@ -111,8 +111,7 @@ def profile_learn():
     stats.print_callers(10)  # Show callers for top 10 time-consuming calls
     stats.dump_stats("learn_profile.prof")  # Save data to file for later analysis
 
-# Enhanced profiling function for selfPlay
-def profile_self_play():
+def profile_alpha_zero():
     game = Backgammon()
     model = ResNet(game, 4, 64)
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
@@ -126,18 +125,33 @@ def profile_self_play():
     }
     alphaZero = AlphaZero(model, optimizer, game, args)
 
-    # Profile the selfPlay function with detailed stats
-    with cProfile.Profile() as profiler:
-        alphaZero.selfPlay()
+    profiler = cProfile.Profile()
+    profiler.enable()
+    alphaZero.learn()
+    profiler.disable()
 
-    # Save and display profiling results
-    stats = pstats.Stats(profiler)
-    stats.sort_stats(pstats.SortKey.CUMULATIVE).print_stats(20)  # Top 20 functions by cumulative time
-    stats.print_callers(10)  # Show callers for top 10 time-consuming calls
-    stats.dump_stats("selfplay_profile.prof")  # Save data to file for later analysis
+    s = StringIO()
+    stats = pstats.Stats(profiler, stream=s).sort_stats(pstats.SortKey.TIME)
+
+    total_time = sum([stat[2] for stat in stats.stats.values()])  # stat[2] is `tt`
+
+    func_percentages = [
+        (func, stat[2], (stat[2] / total_time) * 100 if total_time > 0 else 0)
+        for func, stat in stats.stats.items()
+    ]
+
+    top_functions_by_percentage = sorted(func_percentages, key=lambda x: x[2], reverse=True)[:20]
+
+    print(f"{'Function':<60} {'Total Time':<15} {'Percentage of Total Time'}")
+    print("=" * 90)
+
+    for func, tottime, percentage in top_functions_by_percentage:
+        func_name = f"{func[0]}:{func[1]}({func[2]})"
+        print(f"{func_name:<60} {tottime:<15.6f} {percentage:.2f}%")
+
+    stats.print_stats(20)
+
 
 if __name__ == "__main__":
-    print("Profiling the learn function...")
-    profile_learn()
-    print("\nProfiling the selfPlay function...")
-    profile_self_play()
+    print("Profiling AlphaZero's learn method with percentage time breakdown (Top 20 by Percentage)...")
+    profile_alpha_zero()
