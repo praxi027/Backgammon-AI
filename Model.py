@@ -5,8 +5,9 @@ import torch.nn.functional as F
 from Backgammon import Backgammon
 
 class ResNet(nn.Module):
-    def __init__(self, game, num_blocks, num_hidden):
+    def __init__(self, game, num_blocks, num_hidden, device):
         super(ResNet, self).__init__()
+        self.device = device
         num_input_channels = 4
         
         self.startBlock = nn.Sequential(
@@ -35,6 +36,8 @@ class ResNet(nn.Module):
             nn.Linear(32 * 4 * 6, 1),
             nn.Tanh()
         )
+        
+        self.to(device)
     
     def forward(self, x):
         x = self.startBlock(x)

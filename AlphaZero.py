@@ -32,7 +32,8 @@ class AlphaZero:
             memory.append((neutral_state, dice_roll, probs, player))
             
             # Choose a random index based on probabilities
-            action = np.random.choice(self.game.action_size, p=probs)
+            temperature_action_probs = probs ** (1/self.args['temperature'])
+            action = np.random.choice(self.game.action_size, p = temperature_action_probs)
 
             action = self.game.decode_move(action, dice_roll)
 
@@ -61,9 +62,9 @@ class AlphaZero:
             
             state, policy_targets, value_targets = np.array(state), np.array(policy_targets), np.array(value_targets).reshape(-1, 1)
             
-            state = torch.tensor(state, dtype=torch.float32)
-            policy_targets = torch.tensor(policy_targets, dtype=torch.float32)
-            value_targets = torch.tensor(value_targets, dtype=torch.float32)
+            state = torch.tensor(state, dtype=torch.float32, device = self.model.device)
+            policy_targets = torch.tensor(policy_targets, dtype=torch.float32, device = self.model.device)
+            value_targets = torch.tensor(value_targets, dtype=torch.float32, device = self.model.device)
             
             out_policy, out_value = self.model(state)
             
@@ -93,9 +94,11 @@ class AlphaZero:
             
 game = Backgammon()
 
-model = ResNet(game, 4, 64)
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+model = ResNet(game, 4, 64, device)
+
+optimizer = torch.optim.Adam(model.parameters(), lr=0.001, weight_decay = 0.0001)
 
 args = {
     'C': 2,
@@ -103,7 +106,8 @@ args = {
     'num_iterations': 3,
     'num_selfPlay_iterations': 1,
     'num_epochs': 4,
-    'batch_size': 64
+    'batch_size': 64,
+    'temperature': 1.25
 }
 
 alphaZero = AlphaZero(model, optimizer, game, args)
