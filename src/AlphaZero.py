@@ -23,22 +23,21 @@ class AlphaZero:
         while True:
             dice_roll = self.game.roll_dice()
             neutral_state = self.game.change_perspective(state, player)
-            best_action, action_probs = self.mcts.search(neutral_state, dice_roll)
-            # Extract moves and probabilities from the dictionary
+            _, action_probs = self.mcts.search(neutral_state, dice_roll)
+
             probs = np.zeros(self.game.action_size, dtype=np.float32)
             for move, prob in action_probs.items():
-                index = self.game.encode_move(move)  # Get the index for the move
+                index = self.game.encode_move(move)  
                 probs[index] = prob
             memory.append((neutral_state, dice_roll, probs, player))
             
-            # Choose a random index based on probabilities
             temperature_action_probs = probs ** (1/self.args['temperature'])
+            # Normalize to make sure it sums to 1
+            temperature_action_probs /= temperature_action_probs.sum()
             action = np.random.choice(self.game.action_size, p = temperature_action_probs)
 
             action = self.game.decode_move(action, dice_roll)
-
             state = self.game.get_next_state(state, action, player)
-            
             value, is_terminal = self.game.get_value_and_terminated(state)
             
             if is_terminal:
@@ -72,9 +71,9 @@ class AlphaZero:
             value_loss = F.mse_loss(out_value, value_targets)
             loss = policy_loss + value_loss
             
-            self.optimizer.zero_grad() # change to self.optimizer
+            self.optimizer.zero_grad() 
             loss.backward()
-            optimizer.step() # change to self.optimizer
+            self.optimizer.step() 
     
     def learn(self):
         for iteration in range(self.args['num_iterations']):
@@ -88,8 +87,8 @@ class AlphaZero:
             for _ in tqdm(range(self.args['num_epochs'])):
                 self.train(memory)
             
-            torch.save(self.model.state_dict(), f"model_{iteration}.pt")
-            torch.save(self.optimizer.state_dict(), f"optimizer_{iteration}.pt")
+            torch.save(self.model.state_dict(), f"../trained_models/model_{iteration}.pt")
+            torch.save(self.optimizer.state_dict(), f"../trained_models/optimizer_{iteration}.pt")
             
             
 game = Backgammon()

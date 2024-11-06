@@ -2,7 +2,6 @@ import numpy as np
 import math
 import random
 import torch 
-from Backgammon import Backgammon
 
 class Node:
     def __init__(self, game, args, state, dice_rolls=None, parent=None, action_taken=None, is_chance_node=False, prior=0):
@@ -21,15 +20,14 @@ class Node:
         
         if self.is_chance_node:
             for dice_roll in self.game.get_all_possible_dice_rolls():
-            # Create a child node for each possible dice roll
                 child = Node(
                     self.game,
                     self.args,
                     self.state,
                     dice_rolls=dice_roll,
                     parent=self,
-                    action_taken=self.action_taken,  # No specific action; this is a chance node
-                    is_chance_node=False,  # Next nodes will be decision/action nodes
+                    action_taken=self.action_taken,  
+                    is_chance_node=False,  
                     prior = self.prior
                 )
                 self.children.append(child)
@@ -39,7 +37,6 @@ class Node:
     
     def select(self):
         if self.is_chance_node:
-            # For chance nodes, select a random child
             return random.choice(self.children) 
 
         best_child = None
@@ -104,7 +101,7 @@ class MCTS_AlphaZero:
             value = self.game.get_opponent_value(value)
             if not is_terminal:
                 policy, value = self.model(
-                torch.tensor(self.game.get_encoded_state(node.state, node.dice_rolls)).unsqueeze(0)
+                torch.tensor(self.game.get_encoded_state(node.state, node.dice_rolls), device = self.model.device).unsqueeze(0)
                 )
                 policy = torch.softmax(policy, axis=1).squeeze(0).cpu().numpy()
                 policy *= self.game.get_valid_moves_encoded(node.state, node.dice_rolls)
@@ -115,7 +112,6 @@ class MCTS_AlphaZero:
             
             node.backpropagate(value)
 
-        # Choose the action with the highest visit count
         action_probs = {}
         for child in root.children:
             action_probs[child.action_taken] = child.visit_count
