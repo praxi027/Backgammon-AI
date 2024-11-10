@@ -1,6 +1,5 @@
 import numpy as np 
 import random
-import torch
 
 class Backgammon:
     def __init__(self):
