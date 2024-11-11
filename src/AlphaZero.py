@@ -6,6 +6,9 @@ from tqdm import tqdm
 from Backgammon import Backgammon
 from Model import ResNet
 import torch.nn.functional as F
+import cProfile
+import pstats
+from io import StringIO
 
 class AlphaZero:
     def __init__(self, model, optimizer, game, args):
@@ -91,25 +94,71 @@ class AlphaZero:
             torch.save(self.optimizer.state_dict(), f"../trained_models/optimizer_{iteration}.pt")
             
             
-game = Backgammon()
+# game = Backgammon()
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-print(f"Using device: {device}")
+# device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+# print(f"Using device: {device}")
 
-model = ResNet(game, 4, 64, device)
+# model = ResNet(game, 4, 64, device)
 
-optimizer = torch.optim.Adam(model.parameters(), lr=0.001, weight_decay = 0.0001)
+# optimizer = torch.optim.Adam(model.parameters(), lr=0.001, weight_decay = 0.0001)
 
-args = {
-    'C': 1.5,
-    'num_searches': 60,
-    'num_iterations': 1,
-    'num_selfPlay_iterations': 3,
-    'num_epochs': 4,
-    'batch_size': 64,
-    'temperature': 1.25
-}
+# args = {
+#     'C': 1.5,
+#     'num_searches': 60,
+#     'num_iterations': 1,
+#     'num_selfPlay_iterations': 3,
+#     'num_epochs': 4,
+#     'batch_size': 64,
+#     'temperature': 1.25
+# }
 
-alphaZero = AlphaZero(model, optimizer, game, args)
-alphaZero.learn()
+# alphaZero = AlphaZero(model, optimizer, game, args)
+# alphaZero.learn()
+
+def profile_alpha_zero():
+    game = Backgammon()
+    model = ResNet(game, 4, 64, "cpu")
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+    args = {
+        'C': 2,
+        'num_searches': 60,
+        'num_iterations': 3,
+        'num_selfPlay_iterations': 1,
+        'num_epochs': 4,
+        'batch_size': 64,
+        'temperature': 1.00
+    }
+    alphaZero = AlphaZero(model, optimizer, game, args)
+
+    profiler = cProfile.Profile()
+    profiler.enable()
+    alphaZero.learn()
+    profiler.disable()
+
+    s = StringIO()
+    stats = pstats.Stats(profiler, stream=s).sort_stats(pstats.SortKey.TIME)
+
+    total_time = sum([stat[2] for stat in stats.stats.values()])  # stat[2] is `tt`
+
+    func_percentages = [
+        (func, stat[2], (stat[2] / total_time) * 100 if total_time > 0 else 0)
+        for func, stat in stats.stats.items()
+    ]
+
+    top_functions_by_percentage = sorted(func_percentages, key=lambda x: x[2], reverse=True)[:20]
+
+    print(f"{'Function':<60} {'Total Time':<15} {'Percentage of Total Time'}")
+    print("=" * 90)
+
+    for func, tottime, percentage in top_functions_by_percentage:
+        func_name = f"{func[0]}:{func[1]}({func[2]})"
+        print(f"{func_name:<60} {tottime:<15.6f} {percentage:.2f}%")
+
+    stats.print_stats(20)
+
+
+if __name__ == "__main__":
+    print("Profiling AlphaZero's learn method with percentage time breakdown (Top 20 by Percentage)...")
+    profile_alpha_zero()
             
