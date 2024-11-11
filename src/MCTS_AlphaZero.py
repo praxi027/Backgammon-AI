@@ -62,7 +62,7 @@ class Node:
             if prob > 0:        
                 child_state = self.state.copy()
                 decoded_action = self.game.decode_move(action, self.dice_rolls)
-                child_state = self.game.get_next_state(self.state, decoded_action, 1)
+                child_state = self.game.get_next_state(child_state, decoded_action, 1)
                 child_state = self.game.change_perspective(child_state, -1)
                 child = Node(self.game, self.args, child_state, dice_rolls=None, parent=self, action_taken=decoded_action, is_chance_node=True, prior = prob)
                 self.children.append(child)

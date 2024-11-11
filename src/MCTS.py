@@ -55,7 +55,7 @@ class Node:
             self.expandable_moves.remove(action)
             
             child_state = self.state.copy()
-            child_state = self.game.get_next_state(self.state, action, 1)
+            child_state = self.game.get_next_state(child_state, action, 1)
             child_state = self.game.change_perspective(child_state, -1)
             child = Node(self.game, self.args, child_state, dice_rolls=None, parent=self, action_taken=action, is_chance_node=True)
 

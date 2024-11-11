@@ -102,9 +102,9 @@ def simulate_ai_vs_random(num_games, args):
 
             if player == -1:
                 # AI player
-                ai_state = state
-                ai_state = backgammon.change_perspective(state, player)
-                action ,mcts_probs = mcts.search(ai_state, dice_rolls)
+                state = backgammon.change_perspective(state, player)
+                action ,mcts_probs = mcts.search(state, dice_rolls)
+                state = backgammon.change_perspective(state, player)
             else:
                 action = random.choice(valid_moves)
 

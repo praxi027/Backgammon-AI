@@ -5,7 +5,7 @@ class Backgammon:
     def __init__(self):
         self.board = np.array([])
         self.board_size = 24  # 24 positions on the board
-        self.action_size = 1352
+        self.action_size = 1352 # move encoding is explained below
         
     def get_initial_state(self):
         state = np.zeros(self.board_size, dtype=int)
@@ -15,27 +15,17 @@ class Backgammon:
         return state
     
     def roll_dice(self):
-        dice_rolls = (random.randint(1, 6), random.randint(1, 6))
-        return dice_rolls
+        return random.choices(range(1, 7), k=2)
     
     def change_perspective(self, state, player):
-        shifted_state = np.zeros(self.board_size, dtype=int)
         if player == -1:
-            # Shift the state for player 2
-            shifted_state = state.copy()
-            for i in range(self.board_size):
-                shifted_state[i-12] = -state[i]
-            return shifted_state
-        return state  # For player 1, no shift is needed
+            return -np.roll(state, 12)
+        return state
     
     def can_throw_away(self, state):
-        for pos in range(0, 18):
-            if state[pos] > 0:  
-                return False
-        return True
+        return np.all(state[:18] <= 0)
     
     def get_next_state(self, state, action, player): 
-        # Unpack the action tuple
         first_move, second_move = action
         if (player == -1):
             state = self.change_perspective(state, player)
@@ -60,13 +50,15 @@ class Backgammon:
                 to_pos = from_pos + roll 
                 if 0 <= to_pos < self.board_size and state[to_pos] >= 0:  # Valid move (empty or own pieces)
                     single_moves.append((from_pos, to_pos))
-                elif 0 <= to_pos and self.can_throw_away(state):  
+                elif self.board_size == to_pos and self.can_throw_away(state):  
                     single_moves.append((from_pos, 24))  # Throw away piece
+                elif self.board_size < to_pos and self.can_throw_away(state) and np.all(state[:from_pos - 1] <= 0): # checks if there are preceding checkers 
+                    single_moves.append((from_pos, 24))  
         return single_moves
     
     def get_valid_moves(self, currentState, player, dice_rolls):
         # Change perspective if player 2
-        state = self.change_perspective(currentState, player)
+        state = self.change_perspective(currentState.copy(), player)
         valid_moves = set()
         # should try to play the biggest dice first if both moves not possible
         dice_rolls = sorted(dice_rolls, reverse=True)
@@ -109,7 +101,14 @@ class Backgammon:
         return -value
     
     def get_all_possible_dice_rolls(self):
-        return [(i, j) for i in range(1, 7) for j in range(i, 7)]
+        return [
+            (1, 1), (1, 2), (1, 3), (1, 4), (1, 5), (1, 6),
+            (2, 2), (2, 3), (2, 4), (2, 5), (2, 6),
+            (3, 3), (3, 4), (3, 5), (3, 6),
+            (4, 4), (4, 5), (4, 6),
+            (5, 5), (5, 6),
+            (6, 6)
+        ]
 
     @staticmethod
     def encode_board_state(board):
