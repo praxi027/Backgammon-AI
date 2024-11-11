@@ -118,16 +118,18 @@ class AlphaZero:
 
 def profile_alpha_zero():
     game = Backgammon()
-    model = ResNet(game, 4, 64, "cpu")
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print("Using ", device)
+    model = ResNet(game, 4, 64, device)
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
     args = {
         'C': 2,
-        'num_searches': 60,
+        'num_searches': 100,
         'num_iterations': 3,
         'num_selfPlay_iterations': 1,
         'num_epochs': 4,
         'batch_size': 64,
-        'temperature': 1.00
+        'temperature': 1.25
     }
     alphaZero = AlphaZero(model, optimizer, game, args)
 

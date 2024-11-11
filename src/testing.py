@@ -5,6 +5,7 @@ from tqdm import tqdm
 import time
 from MCTS_AlphaZero import MCTS_AlphaZero
 from Model import ResNet
+import torch 
 
 def play_multiplayer():
     game = Backgammon()              
@@ -130,7 +131,9 @@ def simulate_ai_vs_random(num_games, args):
 
 def simulate_ai_vs_random_AlphaZero(num_games, args):
     backgammon = Backgammon()
-    model = ResNet(backgammon, 4, 64)
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model = ResNet(backgammon, 4, 64, device)
+    model.load_state_dict(torch.load('../trained_models/model_2.pt'))
     model.eval()
     mcts = MCTS_AlphaZero(backgammon, model, args)
     
@@ -150,9 +153,9 @@ def simulate_ai_vs_random_AlphaZero(num_games, args):
 
             if player == -1:
                 # AI player
-                ai_state = state
-                ai_state = backgammon.change_perspective(state, player)
-                action ,mcts_probs = mcts.search(ai_state, dice_rolls)
+                state = backgammon.change_perspective(state, player)
+                action ,mcts_probs = mcts.search(state, dice_rolls)
+                state = backgammon.change_perspective(state, player)
             else:
                 action = random.choice(valid_moves)
 
@@ -208,10 +211,15 @@ def run_simulation_AlphaZero(args):
     print(f"Random Wins: {results['Random Wins']}")
     
 args = {
-    'C': 1.41,
-    'num_searches': 100
+    'C': 2,
+    'num_searches': 1000,
+    'num_iterations': 3,
+    'num_selfPlay_iterations': 1,
+    'num_epochs': 4,
+    'batch_size': 64,
+    'temperature': 1.00
 }
-
+    
 if __name__ == "__main__":
     print("Choose an option to run:")
     print("1: Play Backgammon Multiplayer")
