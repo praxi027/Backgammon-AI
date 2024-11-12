@@ -29,11 +29,11 @@ class ResNet(nn.Module):
         )
         
         self.valueHead = nn.Sequential(
-            nn.Conv2d(num_hidden, 32, kernel_size=3, padding=1),
-            nn.BatchNorm2d(32),
+            nn.Conv2d(num_hidden, 3, kernel_size=3, padding=1),
+            nn.BatchNorm2d(3),
             nn.ReLU(),
             nn.Flatten(),
-            nn.Linear(32 * 4 * 6, 1),
+            nn.Linear(3 * 4 * 6, 1),
             nn.Tanh()
         )
         
